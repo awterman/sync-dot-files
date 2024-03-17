@@ -12,8 +12,11 @@ path = "src/main.rs"
 [dependencies]
 ansi_term = "0.12.1"
 clap = { version = "4.5.3", features = ["cargo"] }
-env_logger = "0.11.3"
 git2 = "0.18.2"
-log = "0.4.21"
 serde = { version = "1.0.197", features = ["derive"] }
 toml = "0.8.11"
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "z"

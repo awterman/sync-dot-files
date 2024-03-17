@@ -1,29 +1,10 @@
-use ansi_term::{ANSIString, Color};
 use clap::{arg, command, Command};
-use log::{Level, LevelFilter};
-use std::io::Write;
 
 pub mod app;
 pub mod config;
 pub mod sh;
 
 fn main() {
-    env_logger::Builder::from_default_env()
-        .format(|buf, record| {
-            let level = record.level();
-            let message = format!("{}", record.args());
-            let message = match level {
-                Level::Error => Color::Red.paint(message),
-                Level::Warn => Color::Yellow.paint(message),
-                Level::Info => Color::Green.paint(message),
-                _ => ANSIString::from(message),
-            };
-
-            writeln!(buf, "{message}")
-        })
-        .filter_level(LevelFilter::Trace)
-        .init();
-
     let app = app::App::new().expect("Failed to create app");
 
     let cmd = Command::new("sync-dot-files")
@@ -69,12 +50,12 @@ fn main() {
                 .is_clean()
                 .expect("Failed to check if the repository is clean")
             {
-                log::info!("The repository is clean");
+                println!("The repository is clean");
 
                 // exit with a successful status code
                 std::process::exit(0);
             } else {
-                log::error!("The repository is not clean");
+                println!("The repository is not clean");
 
                 // exit with a failure status code
                 std::process::exit(1);
@@ -87,12 +68,12 @@ fn main() {
                 .is_synced()
                 .expect("Failed to check if the repository is synced")
             {
-                log::info!("The repository is synced");
+                println!("The repository is synced");
 
                 // exit with a successful status code
                 std::process::exit(0);
             } else {
-                log::error!("The repository is not synced");
+                println!("The repository is not synced");
 
                 // exit with a failure status code
                 std::process::exit(1);
@@ -112,26 +93,26 @@ fn main() {
             app.sync().expect("Failed to sync the repository");
         }
         _ => {
-            log::trace!("Checking clean");
+            println!("Checking clean");
             let is_clean = app
                 .is_clean()
                 .expect("Failed to check if the repository is clean");
 
             if is_clean {
-                log::info!("Clean");
+                println!("Clean");
             } else {
-                log::error!("Not clean");
+                println!("Not clean");
             }
 
-            log::trace!("Checking synced");
+            println!("Checking synced");
             let is_synced = app
                 .is_synced()
                 .expect("Failed to check if the repository is synced");
 
             if is_synced {
-                log::info!("Synced");
+                println!("Synced");
             } else {
-                log::error!("Not synced");
+                println!("Not synced");
             }
 
             if is_clean && is_synced {
