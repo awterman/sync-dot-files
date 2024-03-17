@@ -1,0 +1,19 @@
+[package]
+name = "sync-dot-files"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "sdf"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ansi_term = "0.12.1"
+clap = { version = "4.5.3", features = ["cargo"] }
+env_logger = "0.11.3"
+git2 = "0.18.2"
+log = "0.4.21"
+serde = { version = "1.0.197", features = ["derive"] }
+toml = "0.8.11"
