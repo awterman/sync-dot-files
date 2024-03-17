@@ -5,9 +5,14 @@ pub mod config;
 pub mod sh;
 
 fn main() {
+    let support_cd = std::env::var("SDF_SUPPORT_CD")
+        .unwrap_or("false".to_string())
+        .parse::<bool>()
+        .expect("Failed to parse SDF_SUPPORT_CD as a boolean");
+
     let app = app::App::new().expect("Failed to create app");
 
-    let cmd = Command::new("sync-dot-files")
+    let mut cmd = Command::new("sync-dot-files")
         .subcommand(
             command!("init")
                 .about("Initialize the repository")
@@ -22,6 +27,14 @@ fn main() {
         .subcommand(command!("is-synced").about("Check if the repository is synced"))
         .subcommand(command!("repo-path").about("Get the local repository path"))
         .subcommand(command!("sync").about("Sync the repository"));
+
+    if support_cd {
+        cmd = cmd.subcommand(
+            command!("cd")
+                .about("Change the current directory to the repository")
+                .arg(arg!(path: [String])),
+        );
+    }
 
     let matches = cmd.get_matches();
 
