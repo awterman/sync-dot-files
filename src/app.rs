@@ -1,5 +1,5 @@
 use git2;
-use std::{error::Error, fs};
+use std::{error::Error, fs, os::unix::fs::MetadataExt};
 
 use crate::{config::ConfigManager, sh::cmd};
 
@@ -48,8 +48,10 @@ impl App {
     }
 
     pub fn init(&self, github_account: &str) -> Result<(), Box<dyn Error>> {
-        self.config.init(github_account)?;
+        self.config.init(github_account)
+    }
 
+    fn init_repo(&self) -> Result<(), Box<dyn Error>> {
         let local_repo_path = &self.config.load()?.repo_path;
         let remote_repo = self.get_github_repo()?;
 
@@ -132,10 +134,7 @@ impl App {
     }
 
     pub fn sync(&self) -> Result<(), Box<dyn Error>> {
-        if !self.is_repo_ready()? {
-            println!("The repository is not ready");
-            return Err("The repository is not ready".into());
-        }
+        self.init_repo()?;
 
         let repo_path = &self.config.load()?.repo_path;
 
@@ -159,6 +158,29 @@ impl App {
         cmd!("git -C {repo_path} push")?;
 
         println!("Repo is synced");
+
+        // hard-link the dotfiles
+        println!("Checking and linking the dotfiles");
+        for dotfile in &self.config.load()?.dotfiles {
+            let home = env!("HOME");
+            let dotfile_path = format!("{home}/{dotfile}");
+            let repo_dotfile_path = format!("{repo_path}/{dotfile}");
+
+            if std::path::Path::new(&dotfile_path).exists() {
+                // check if the dotfile shares the same inode with the repo dotfile
+                let dotfile_inode = fs::metadata(&dotfile_path)?.ino();
+                let repo_dotfile_inode = fs::metadata(&repo_dotfile_path)?.ino();
+                if dotfile_inode != repo_dotfile_inode {
+                    println!("{dotfile} already exists and not linked to the repo");
+                }
+                continue;
+            }
+
+            println!("Linking {dotfile} from the repository");
+            fs::hard_link(repo_dotfile_path, dotfile_path)
+                .map_err(|e| format!("Failed to hard-link {dotfile}: {e}"))?;
+        }
+
         Ok(())
     }
 }
