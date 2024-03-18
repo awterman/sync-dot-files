@@ -77,6 +77,10 @@ impl ConfigManager {
         let mut config = self.load()?;
         config.dotfiles.push(dotfile.to_string());
 
+        // deduplicate the dotfiles
+        config.dotfiles.sort();
+        config.dotfiles.dedup();
+
         self.save(&config)?;
         Ok(())
     }

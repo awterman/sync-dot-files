@@ -1,5 +1,5 @@
 use git2;
-use std::{error::Error, fs, os::unix::fs::MetadataExt};
+use std::{error::Error, fs, os::unix::fs::symlink};
 
 use crate::{config::ConfigManager, sh::cmd};
 
@@ -95,7 +95,11 @@ impl App {
         let repo_path = &self.config.load()?.repo_path;
         let repo_dotfile_path = format!("{repo_path}/{dotfile}");
 
-        fs::hard_link(dotfile_path, repo_dotfile_path)?;
+        // move the dotfile to the repository
+        fs::rename(&dotfile_path, &repo_dotfile_path)?;
+
+        // create a symlink to the dotfile
+        symlink(repo_dotfile_path, dotfile_path)?;
 
         // add the dotfile to the repository
         cmd!("git -C {repo_path} add {dotfile}")?;
@@ -130,7 +134,35 @@ impl App {
         let remote_branch = format!("origin/{current_branch}");
         let stdout = cmd!("git -C {repo_path} rev-list HEAD...{remote_branch}")?;
 
-        Ok(stdout.is_empty())
+        if !stdout.is_empty() {
+            return Ok(false);
+        }
+
+        Ok(self.is_contents_synced()?)
+    }
+
+    fn is_contents_synced(&self) -> Result<bool, Box<dyn Error>> {
+        let repo_path = &self.config.load()?.repo_path;
+
+        for dotfile in &self.config.load()?.dotfiles {
+            let home = env!("HOME");
+            let dotfile_path = format!("{home}/{dotfile}");
+            let repo_dotfile_path = format!("{repo_path}/{dotfile}");
+
+            if !std::path::Path::new(&dotfile_path).exists() {
+                continue;
+            }
+
+            let dotfile_contents = fs::read_to_string(&dotfile_path)?;
+            let repo_dotfile_contents = fs::read_to_string(&repo_dotfile_path)?;
+
+            if dotfile_contents != repo_dotfile_contents {
+                println!("The contents of {dotfile} are different from the repository");
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 
     pub fn sync(&self) -> Result<(), Box<dyn Error>> {
@@ -139,7 +171,7 @@ impl App {
         let repo_path = &self.config.load()?.repo_path;
 
         // pull
-        println!("Pulling the repo");
+        println!("Pulling the repository");
         cmd!("git -C {repo_path} pull")
             .map_err(|e| format!("Failed to pull the repository: {e}"))?;
 
@@ -154,28 +186,35 @@ impl App {
             cmd!("git -C {repo_path} push")?;
         }
 
-        println!("Repo is synced");
+        println!("Repository is synced");
 
         // hard-link the dotfiles
-        println!("Checking and linking the dotfiles");
+        println!("Checking dotfiles");
         for dotfile in &self.config.load()?.dotfiles {
+            println!("Checking {dotfile}");
+
             let home = env!("HOME");
             let dotfile_path = format!("{home}/{dotfile}");
             let repo_dotfile_path = format!("{repo_path}/{dotfile}");
 
             if std::path::Path::new(&dotfile_path).exists() {
-                // check if the dotfile shares the same inode with the repo dotfile
-                let dotfile_inode = fs::metadata(&dotfile_path)?.ino();
-                let repo_dotfile_inode = fs::metadata(&repo_dotfile_path)?.ino();
-                if dotfile_inode != repo_dotfile_inode {
-                    println!("{dotfile} already exists and not linked to the repo");
+                // check if the dotfile is a symlink
+                match std::fs::read_link(&dotfile_path) {
+                    Ok(link) => {
+                        if link != std::path::Path::new(&repo_dotfile_path) {
+                            println!("{dotfile} is not linked to the repository");
+                        }
+                    }
+                    Err(e) => {
+                        println!("{dotfile} is not a symlink: {e}");
+                    }
                 }
+
                 continue;
             }
 
             println!("Linking {dotfile} from the repository");
-            fs::hard_link(repo_dotfile_path, dotfile_path)
-                .map_err(|e| format!("Failed to hard-link {dotfile}: {e}"))?;
+            symlink(repo_dotfile_path, dotfile_path)?;
         }
 
         Ok(())

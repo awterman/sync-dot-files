@@ -20,3 +20,4 @@ toml = "0.8.11"
 strip = true
 lto = true
 opt-level = "z"
+rustc-flags = "-D warnings"
