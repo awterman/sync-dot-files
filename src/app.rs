@@ -150,15 +150,18 @@ impl App {
             let repo_dotfile_path = format!("{repo_path}/{dotfile}");
 
             if !std::path::Path::new(&dotfile_path).exists() {
-                continue;
+                return Ok(false);
             }
 
-            let dotfile_contents = fs::read_to_string(&dotfile_path)?;
-            let repo_dotfile_contents = fs::read_to_string(&repo_dotfile_path)?;
-
-            if dotfile_contents != repo_dotfile_contents {
-                println!("The contents of {dotfile} are different from the repository");
-                return Ok(false);
+            match std::fs::read_link(&dotfile_path) {
+                Ok(link) => {
+                    if link != std::path::Path::new(&repo_dotfile_path) {
+                        return Ok(false);
+                    }
+                }
+                Err(_) => {
+                    return Ok(false);
+                }
             }
         }
 
