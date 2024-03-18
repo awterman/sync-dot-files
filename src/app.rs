@@ -143,19 +143,16 @@ impl App {
         cmd!("git -C {repo_path} pull")
             .map_err(|e| format!("Failed to pull the repository: {e}"))?;
 
-        if self.is_clean()? {
-            println!("Repo is clean");
-            return Ok(());
+        if !self.is_clean()? {
+            // commit
+            println!("Committing the changes");
+            cmd!("git -C {repo_path} add .")?;
+            cmd!("git -C {repo_path} commit -m 'Update dotfiles by Sync-dot-files'")?;
+
+            // push
+            println!("Pushing the changes");
+            cmd!("git -C {repo_path} push")?;
         }
-
-        // commit
-        println!("Committing the changes");
-        cmd!("git -C {repo_path} add .")?;
-        cmd!("git -C {repo_path} commit -m 'Update dotfiles by Sync-dot-files'")?;
-
-        // push
-        println!("Pushing the changes");
-        cmd!("git -C {repo_path} push")?;
 
         println!("Repo is synced");
 
