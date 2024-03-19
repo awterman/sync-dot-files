@@ -16,12 +16,12 @@ fn main() {
         .subcommand(
             command!("init")
                 .about("Initialize the repository")
-                .arg(arg!(github_account: [String])),
+                .arg(arg!(<github_account>)),
         )
         .subcommand(
             command!("add")
                 .about("Add a dotfile to the repository")
-                .arg(arg!(dotfile: [String])),
+                .arg(arg!(<dotfile>)),
         )
         .subcommand(command!("is-clean").about("Check if the repository is clean"))
         .subcommand(command!("is-synced").about("Check if the repository is synced"))
@@ -32,7 +32,7 @@ fn main() {
         cmd = cmd.subcommand(
             command!("cd")
                 .about("Change the current directory to the repository")
-                .arg(arg!(path: [String])),
+                .arg(arg!(<path>)),
         );
     }
 
